@@ -30,7 +30,44 @@ body{
   font-family:var(--body); font-size:15px; line-height:1.55;
   -webkit-font-smoothing:antialiased;
 }
-.wrap{max-width:1060px; margin:0 auto; padding:28px 18px 80px; display:flex; flex-direction:column; gap:40px}
+/* ---------- panel düzeni ---------- */
+.app{height:100dvh; display:flex; flex-direction:column; overflow:hidden}
+.bar{
+  flex:none; display:flex; align-items:center; gap:14px 20px; flex-wrap:wrap;
+  padding:12px 18px; border-bottom:1px solid var(--rule); background:var(--void);
+}
+.bar .logo{display:flex; align-items:center; gap:10px; margin-right:auto}
+.bar .logo .b{
+  width:15px; height:15px; border-radius:50%; flex:none;
+  background:radial-gradient(circle at 33% 30%, #ffb184, #ff6a1f 62%, #b8400c);
+  box-shadow:0 0 14px rgba(255,106,31,.5);
+}
+.bar h1{
+  font-family:var(--disp); font-weight:800; text-transform:uppercase; font-size:19px;
+  letter-spacing:.02em; margin:0; line-height:1; white-space:nowrap;
+}
+.sekmeler{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none}
+.sekmeler::-webkit-scrollbar{display:none}
+.sekme{
+  font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  background:none; border:1px solid var(--rule); border-radius:2px; color:var(--faint);
+  padding:7px 11px; cursor:pointer; white-space:nowrap; transition:color .15s, border-color .15s;
+}
+.sekme:hover{color:var(--ink)}
+.sekme[aria-current="true"]{color:var(--ink); border-color:var(--dim)}
+
+.deck{
+  flex:1; min-height:0; display:flex; overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory; scroll-behavior:smooth;
+  scrollbar-width:none; overscroll-behavior-x:contain;
+}
+.deck::-webkit-scrollbar{display:none}
+.panel{
+  flex:0 0 100%; width:100%; height:100%; scroll-snap-align:center; scroll-snap-stop:always;
+  overflow-y:auto; padding:22px 18px 34px;
+}
+.panel-ic{max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:26px}
+@media (prefers-reduced-motion:reduce){ .deck{scroll-behavior:auto} }
 
 .eyebrow{
   font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.24em;
@@ -55,10 +92,11 @@ select,input[type=text]{
 select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid #ff6a1f; outline-offset:2px}
 
 /* ---------- court ---------- */
-.courts{display:flex; flex-direction:column; gap:22px}
+.courts{display:contents}
+.riv-panel{display:flex; flex-direction:column; gap:20px}
 .riv{
   position:relative; background:var(--panel); border:1px solid var(--rule);
-  border-radius:4px; padding:20px 22px 18px; overflow:hidden;
+  border-radius:5px; padding:24px 24px 20px; overflow:hidden;
 }
 .riv-head{display:grid; grid-template-columns:1fr auto 1fr; align-items:end; gap:14px; margin-bottom:14px}
 .pl{display:flex; flex-direction:column; gap:2px; min-width:0}
@@ -68,7 +106,7 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
 }
 .score{
-  font-family:var(--disp); font-weight:800; font-size:clamp(46px,9vw,74px);
+  font-family:var(--disp); font-weight:800; font-size:clamp(52px,11vw,92px);
   line-height:.86; font-variant-numeric:tabular-nums; height:.86em; overflow:hidden;
 }
 .roll{display:flex; flex-direction:column}
@@ -81,7 +119,7 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
 }
 
 .court{
-  position:relative; height:132px; background:var(--court);
+  position:relative; height:clamp(150px,26vh,230px); background:var(--court);
   border:1px solid var(--rule); border-radius:3px; overflow:hidden;
 }
 .side{position:absolute; top:0; bottom:0; width:50%}
@@ -132,8 +170,8 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
 .riv-ctrl{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px; margin-top:14px}
 .plus{
   font-family:var(--disp); font-weight:700; text-transform:uppercase;
-  font-size:19px; letter-spacing:.06em; line-height:1;
-  padding:13px 20px; border-radius:3px; cursor:pointer;
+  font-size:22px; letter-spacing:.06em; line-height:1;
+  padding:16px 26px; border-radius:3px; cursor:pointer;
   background:transparent; border:1px solid; transition:background .16s, color .16s, box-shadow .16s;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
 }
@@ -227,8 +265,38 @@ button.face:hover{opacity:.82}
 .btn.ghost{background:transparent; color:var(--dim); border-color:var(--rule)}
 .btn.ghost:hover{color:var(--ink); border-color:var(--faint)}
 
+/* ---------- grafikler ---------- */
+.kartlar{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px}
+.oyuncuKart{
+  background:var(--panel); border:1px solid var(--rule); border-radius:4px; padding:16px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.oyuncuKart .ust{display:flex; align-items:center; gap:11px}
+.oyuncuKart .ad{font-family:var(--disp); font-weight:700; font-size:24px; text-transform:uppercase; letter-spacing:.02em}
+.oyuncuKart .buyuk{font-family:var(--disp); font-weight:800; font-size:44px; line-height:.9; font-variant-numeric:tabular-nums}
+.oyuncuKart .alt{display:flex; gap:16px; font-family:var(--mono); font-size:10.5px; color:var(--faint); letter-spacing:.1em; text-transform:uppercase}
+.oyuncuKart .alt b{display:block; font-family:var(--disp); font-size:19px; color:var(--ink); letter-spacing:.02em; margin-top:2px}
+.oran{height:6px; border-radius:3px; background:var(--court); overflow:hidden}
+.oran i{display:block; height:100%; border-radius:3px; transition:width .5s cubic-bezier(.2,.8,.3,1)}
+
+.grafik{background:var(--panel); border:1px solid var(--rule); border-radius:4px; padding:18px}
+.grafik svg{display:block; width:100%; height:auto; overflow:visible}
+.gLegend{display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.gLegend span{display:flex; align-items:center; gap:7px}
+.gLegend i{width:14px; height:2px; border-radius:1px}
+
+.h2h{display:flex; flex-direction:column; gap:12px}
+.h2hSatir{background:var(--panel); border:1px solid var(--rule); border-radius:4px; padding:14px 16px; display:flex; flex-direction:column; gap:9px; cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit}
+.h2hSatir:hover{border-color:var(--faint)}
+.h2hUst{display:flex; align-items:center; justify-content:space-between; gap:12px}
+.h2hAd{font-family:var(--disp); font-weight:700; font-size:19px; text-transform:uppercase; letter-spacing:.02em; display:flex; align-items:center; gap:8px}
+.h2hSkor{font-family:var(--disp); font-weight:800; font-size:24px; font-variant-numeric:tabular-nums; letter-spacing:.02em}
+.h2hCubuk{height:8px; border-radius:4px; display:flex; overflow:hidden; background:var(--court)}
+.h2hCubuk i{display:block; height:100%}
+.h2hAlt{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
+
 /* ---------- tabela / feed / döküm ---------- */
-.lower{display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1fr); gap:40px}
+.lower{display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1fr); gap:34px}
 table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
 th{
   font-family:var(--mono); font-weight:500; font-size:9.5px; letter-spacing:.16em;
@@ -282,9 +350,10 @@ tr.sum td:first-child{font-family:var(--mono); font-size:10.5px; color:var(--dim
 .addp:hover{color:var(--ink); border-color:var(--faint)}
 
 @media (max-width:720px){
-  .lower{grid-template-columns:1fr; gap:34px}
+  .lower{grid-template-columns:1fr; gap:26px}
   .riv{padding:16px 14px 14px}
-  .court{height:104px}
+  .panel{padding:16px 13px 30px}
+  .bar{padding:10px 13px}
   .riv-ctrl{grid-template-columns:1fr 1fr; gap:10px}
   .mid-meta{grid-column:1/-1; order:3; margin-top:4px}
   .plus{width:100%; font-size:17px; padding:14px 10px}
@@ -319,45 +388,63 @@ tr.sum td:first-child{font-family:var(--mono); font-size:10.5px; color:var(--dim
   </div>
 </div>
 
-<div class="wrap" lang="tr">
+<div class="app" lang="tr">
 
-  <header class="top">
-    <div>
-      <h1>Masa Tenisi<br><em>Kan Davası</em></h1>
-      <p class="sub">Her kapışma 100 galibiyete · İlk varan davayı kapatır</p>
-    </div>
+  <header class="bar">
+    <div class="logo"><span class="b"></span><h1>Kan Davası</h1></div>
+    <nav class="sekmeler" id="sekmeler" aria-label="Sayfalar"></nav>
     <label class="who">Ben <select id="me"><option value="">—</option></select></label>
   </header>
 
-  <div id="note"></div>
+  <div class="deck" id="deck">
 
-  <section>
-    <p class="eyebrow">Kortlar · sayıyı kim aldıysa onun tuşuna bas</p>
-    <div class="courts" id="courts"></div>
-  </section>
+    <section class="panel" id="pGenel" aria-label="Genel durum">
+      <div class="panel-ic">
+        <div id="note"></div>
 
-  <div class="lower">
-    <section>
-      <p class="eyebrow">Tabela</p>
-      <table><thead><tr><th>Oyuncu</th><th>O</th><th>G</th><th>M</th><th>%</th><th>Seri</th></tr></thead>
-      <tbody id="stand"></tbody></table>
-      <div class="foot">
-        <button class="addp" id="addp">+ Oyuncu ekle</button>
-        <button class="addp" id="backup" hidden>↓ Yedek indir</button>
-        <p class="note" id="backupnote"></p>
+        <div>
+          <p class="eyebrow">Genel durum</p>
+          <div class="kartlar" id="oyuncuKartlari"></div>
+        </div>
+
+        <div>
+          <p class="eyebrow">Toplam galibiyet · zamanla</p>
+          <div class="grafik">
+            <div id="cizgi"></div>
+            <div class="gLegend" id="cizgiLegend"></div>
+          </div>
+        </div>
+
+        <div>
+          <p class="eyebrow">Kapışmalar · 100'e giden yol</p>
+          <div class="h2h" id="h2h"></div>
+        </div>
+
+        <div class="lower">
+          <div>
+            <p class="eyebrow">Tabela</p>
+            <table><thead><tr><th>Oyuncu</th><th>O</th><th>G</th><th>M</th><th>%</th><th>Seri</th></tr></thead>
+            <tbody id="stand"></tbody></table>
+            <div class="foot">
+              <button class="addp" id="addp">+ Oyuncu ekle</button>
+              <button class="addp" id="backup" hidden>↓ Yedek indir</button>
+              <p class="note" id="backupnote"></p>
+            </div>
+          </div>
+          <div>
+            <p class="eyebrow">Son hareketler</p>
+            <div class="feed" id="feed"></div>
+          </div>
+        </div>
+
+        <div>
+          <p class="eyebrow">Günlük döküm · defterdeki hâli</p>
+          <div class="daily" id="daily"></div>
+        </div>
       </div>
     </section>
-    <section>
-      <p class="eyebrow">Son hareketler</p>
-      <div class="feed" id="feed"></div>
-    </section>
+
   </div>
-
-  <section>
-    <p class="eyebrow">Günlük döküm · defterdeki hâli</p>
-    <div class="daily" id="daily"></div>
-  </section>
-
 </div>
 
 <script>
@@ -690,6 +777,159 @@ function playScore(c, r, m){
 }
 
 /* ---------- diğer bölümler ---------- */
+/* ---------- paneller ---------- */
+var deck = $("deck"), panelSira = [];
+
+function rivPanel(r){
+  var el = document.createElement("section");
+  el.className = "panel";
+  el.setAttribute("aria-label", pname(r.a) + " – " + pname(r.b));
+  el.dataset.key = r.key;
+  var ic = document.createElement("div");
+  ic.className = "panel-ic riv-panel";
+  el.appendChild(ic);
+  var c = buildCourt(r);
+  ic.appendChild(c.root);
+  var akis = document.createElement("div");
+  akis.innerHTML = '<p class="eyebrow">Bu kapışmanın son hareketleri</p><div class="feed"></div>';
+  ic.appendChild(akis);
+  c.panel = el;
+  c.akis = akis.querySelector(".feed");
+  return c;
+}
+
+function rivAkis(c, r, hepsi){
+  var son = r.ms.slice(-14).reverse();
+  if(!son.length){ c.akis.innerHTML = '<p class="empty">Bu ikili arasında henüz sayı yok.</p>'; return; }
+  c.akis.innerHTML = son.map(function(m){
+    var wn = pname(m.w), ln = pname(m.l);
+    return '<div class="ev">'+
+      '<div class="ev-t"><span style="color:'+pcol(m.w)+'">'+esc(wn)+'</span> <span class="beat">yendi</span> '+esc(ln)+'</div>'+
+      '<div class="ev-w">'+fmtWhen(m.at)+(backend?'<button class="rm" data-rm="'+esc(m.id)+'" title="Sil" aria-label="Sil">✕</button>':'')+'</div>'+
+      '<div class="ev-talk">'+esc(feedFor(m,wn,ln))+'</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderSekmeler(c){
+  var n = $("sekmeler");
+  var etiket = ['<button class="sekme" data-git="0">Genel</button>'].concat(
+    c.list.map(function(r,i){
+      return '<button class="sekme" data-git="'+(i+1)+'">'+esc(pname(r.a))+' – '+esc(pname(r.b))+'</button>';
+    })).join("");
+  if(n.dataset.imza !== etiket){ n.dataset.imza = etiket; n.innerHTML = etiket; }
+  aktifSekme();
+}
+
+function aktifSekme(){
+  var i = Math.round(deck.scrollLeft / Math.max(1, deck.clientWidth));
+  [].forEach.call($("sekmeler").children, function(b, j){
+    b.setAttribute("aria-current", j === i ? "true" : "false");
+  });
+}
+deck.addEventListener("scroll", function(){
+  clearTimeout(deck._t); deck._t = setTimeout(aktifSekme, 170);
+}, {passive:true});
+deck.addEventListener("scrollend", aktifSekme);
+
+function git(i){
+  deck.scrollTo({ left: i * deck.clientWidth, behavior: REDUCE ? "auto" : "smooth" });
+  setTimeout(aktifSekme, 480);
+}
+document.addEventListener("click", function(ev){
+  var b = ev.target.closest("[data-git]");
+  if(b) git(parseInt(b.getAttribute("data-git"), 10) || 0);
+});
+addEventListener("keydown", function(e){
+  if(e.target.matches("input,select,textarea")) return;
+  var i = Math.round(deck.scrollLeft / Math.max(1, deck.clientWidth));
+  if(e.key === "ArrowRight") git(i+1);
+  if(e.key === "ArrowLeft") git(Math.max(0, i-1));
+});
+
+/* ---------- genel durum: kartlar + grafikler ---------- */
+function renderKartlar(c){
+  var ids = S.players.map(function(p){ return p.id; });
+  $("oyuncuKartlari").innerHTML = ids.map(function(id){
+    var r = c.rec[id] || {w:0,l:0,n:0,dir:0}, o = r.w + r.l, pct = o ? Math.round(r.w/o*100) : 0;
+    var col = pcol(id);
+    var seri = !r.dir ? "–" : r.n + (r.dir > 0 ? "G" : "M");
+    return '<div class="oyuncuKart">'+
+      '<div class="ust">'+
+        '<span class="face row'+(pphoto(id)?" has":"")+'" style="background:'+col+'">'+
+          (pphoto(id) ? '<img src="'+esc(pphoto(id))+'" alt="">'
+                      : '<span class="initial">'+esc(pname(id).charAt(0).toLocaleUpperCase("tr"))+'</span>')+
+        '</span>'+
+        '<span class="ad" style="color:'+col+'">'+esc(pname(id))+'</span>'+
+      '</div>'+
+      '<div class="buyuk" style="color:'+col+'">'+pct+'<span style="font-size:20px; color:var(--faint)">%</span></div>'+
+      '<div class="oran"><i style="width:'+pct+'%; background:'+col+'"></i></div>'+
+      '<div class="alt">'+
+        '<span>Oynadı<b>'+o+'</b></span>'+
+        '<span>Galibiyet<b>'+r.w+'</b></span>'+
+        '<span>Yenilgi<b>'+r.l+'</b></span>'+
+        '<span>Seri<b style="color:'+(r.dir>0?"#4ef0a0":(r.dir<0?"#ff6a6a":"var(--faint)"))+'">'+seri+'</b></span>'+
+      '</div>'+
+    '</div>';
+  }).join("");
+}
+
+function renderCizgi(c){
+  var ids = S.players.map(function(p){ return p.id; });
+  if(!ids.length){ $("cizgi").innerHTML = ""; return; }
+  var bas = {};
+  ids.forEach(function(id){ bas[id] = 0; });
+  c.list.forEach(function(r){ bas[r.a] = (bas[r.a]||0) + r.base[0]; bas[r.b] = (bas[r.b]||0) + r.base[1]; });
+  var seri = {};
+  ids.forEach(function(id){ seri[id] = [bas[id]]; });
+  c.ms.forEach(function(m){
+    ids.forEach(function(id){ var a = seri[id]; a.push(a[a.length-1] + (m.w === id ? 1 : 0)); });
+  });
+  var n = c.ms.length, enBuyuk = 1;
+  ids.forEach(function(id){ enBuyuk = Math.max(enBuyuk, seri[id][seri[id].length-1]); });
+  var W = 640, H = 210, P = 26;
+  function X(i){ return P + (n ? i/n : 0) * (W - P*2); }
+  function Y(v){ return H - P - (v/enBuyuk) * (H - P*2); }
+  var izgara = [0, 0.5, 1].map(function(f){
+    var v = Math.round(enBuyuk*f);
+    return '<line x1="'+P+'" y1="'+Y(v)+'" x2="'+(W-P)+'" y2="'+Y(v)+'" stroke="#17232a" stroke-width="1"/>'+
+           '<text x="'+(P-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" fill="#455861" font-size="10" font-family="DM Mono, monospace">'+v+'</text>';
+  }).join("");
+  var yollar = ids.map(function(id){
+    var pts = seri[id].map(function(v,i){ return X(i).toFixed(1)+","+Y(v).toFixed(1); }).join(" ");
+    var sonY = Y(seri[id][seri[id].length-1]);
+    return '<polyline points="'+pts+'" fill="none" stroke="'+pcol(id)+'" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>'+
+           '<circle cx="'+X(n).toFixed(1)+'" cy="'+sonY.toFixed(1)+'" r="3.5" fill="'+pcol(id)+'"/>';
+  }).join("");
+  $("cizgi").innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Zamanla toplam galibiyet">'+
+    izgara + yollar +
+    '<text x="'+P+'" y="'+(H-6)+'" fill="#455861" font-size="10" font-family="DM Mono, monospace">devir</text>'+
+    '<text x="'+(W-P)+'" y="'+(H-6)+'" text-anchor="end" fill="#455861" font-size="10" font-family="DM Mono, monospace">bugün</text>'+
+    '</svg>';
+  $("cizgiLegend").innerHTML = ids.map(function(id){
+    return '<span><i style="background:'+pcol(id)+'"></i>'+esc(pname(id))+'</span>';
+  }).join("");
+}
+
+function renderH2H(c){
+  if(!c.list.length){ $("h2h").innerHTML = '<p class="empty">Kapışma yok.</p>'; return; }
+  $("h2h").innerHTML = c.list.map(function(r, i){
+    var an = pname(r.a), bn = pname(r.b), ac = pcol(r.a), bc = pcol(r.b);
+    var t = Math.max(1, r.aw + r.bw);
+    return '<button class="h2hSatir" data-git="'+(i+1)+'">'+
+      '<div class="h2hUst">'+
+        '<span class="h2hAd" style="color:'+ac+'"><i class="swatch" style="background:'+ac+'"></i>'+esc(an)+'</span>'+
+        '<span class="h2hSkor"><span style="color:'+ac+'">'+r.aw+'</span>'+
+          '<span style="color:var(--faint)"> – </span>'+
+          '<span style="color:'+bc+'">'+r.bw+'</span></span>'+
+        '<span class="h2hAd" style="color:'+bc+'">'+esc(bn)+'<i class="swatch" style="background:'+bc+'"></i></span>'+
+      '</div>'+
+      '<div class="h2hCubuk"><i style="width:'+(r.aw/t*100)+'%; background:'+ac+'"></i><i style="width:'+(r.bw/t*100)+'%; background:'+bc+'"></i></div>'+
+      '<div class="h2hAlt">100\'e ' + Math.max(0, HEDEF-r.aw) + ' / ' + Math.max(0, HEDEF-r.bw) + ' galibiyet · ' + (r.aw+r.bw) + ' maç oynandı</div>'+
+    '</button>';
+  }).join("");
+}
+
 function renderStand(c){
   var ids = S.players.map(function(p){ return p.id; });
   if(!ids.length){ $("stand").innerHTML = '<tr><td colspan="6" class="empty">Oyuncu yok.</td></tr>'; return; }
@@ -799,28 +1039,28 @@ function draw(){
   var byKey = {};
   fresh.forEach(function(m){ byKey[key2(m.w,m.l)] = m; });
 
-  var host = $("courts"), prev = null;
-  if(!c.list.length){
-    host.innerHTML = '<p class="empty">En az iki oyuncu ekleyin, kortlar burada açılsın.</p>';
-  } else {
-    if(host.firstElementChild && host.firstElementChild.tagName !== "ARTICLE") host.innerHTML = "";
-    c.list.forEach(function(r){
-      var el = courts[r.key] || buildCourt(r);
-      if(el.root.parentNode !== host) host.appendChild(el.root);
-      else if(prev && prev.nextElementSibling !== el.root) host.insertBefore(el.root, prev.nextElementSibling);
-      prev = el.root;
-      var m = byKey[r.key];
-      patchCourt(el, r, !!m);
-      if(m) playScore(el, r, m);
-    });
-    Object.keys(courts).forEach(function(k){
-      if(!c.pairs[k] || c.list.indexOf(c.pairs[k]) < 0){
-        if(courts[k].root.parentNode) courts[k].root.parentNode.removeChild(courts[k].root);
-        delete courts[k];
-      }
-    });
-  }
+  /* --- her kapışma için bir panel --- */
+  var prev = $("pGenel");
+  c.list.forEach(function(r){
+    var el = courts[r.key] || rivPanel(r);
+    if(el.panel.parentNode !== deck || prev.nextElementSibling !== el.panel){
+      deck.insertBefore(el.panel, prev.nextElementSibling);
+    }
+    prev = el.panel;
+    var m = byKey[r.key];
+    patchCourt(el, r, !!m);
+    rivAkis(el, r);
+    if(m) playScore(el, r, m);
+  });
+  Object.keys(courts).forEach(function(k){
+    if(!c.pairs[k] || c.list.indexOf(c.pairs[k]) < 0){
+      if(courts[k].panel && courts[k].panel.parentNode) courts[k].panel.parentNode.removeChild(courts[k].panel);
+      delete courts[k];
+    }
+  });
 
+  renderSekmeler(c);
+  renderKartlar(c); renderCizgi(c); renderH2H(c);
   renderStand(c); renderFeed(c); renderDaily(c); renderNote(); renderSelect();
 }
 
