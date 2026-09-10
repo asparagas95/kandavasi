@@ -12,6 +12,13 @@
         integrity="sha384-WmjsOVSSw3JNqIKfmDU35+uddOzBdP9PlYIWCg7xdnVOesjWVGpRcooOVheFFwH4"
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="config.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="scene3d.js"></script>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Chivo:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap">
 <style>
@@ -196,6 +203,12 @@ select:focus-visible,input:focus-visible,button:focus-visible{outline:2px solid 
   margin-top:14px; padding-top:13px; border-top:1px solid var(--rule);
   font-family:var(--mono); font-size:12px; color:var(--dim); line-height:1.5;
 }
+
+/* ---------- 3B kort ---------- */
+div.court canvas#kd3d{position:absolute; inset:0; width:100% !important; height:100% !important; display:block; z-index:0}
+.has-3d .court{background:#05080a}
+.has-3d .court .side, .has-3d .court .net, .has-3d .court .pong{display:none}
+.court .endflash{z-index:2} .court .toast{z-index:3}
 
 /* ---------- yüzler ---------- */
 .face{
@@ -660,7 +673,7 @@ function buildCourt(r){
     faceA:el.querySelectorAll(".face.court")[0], faceB:el.querySelectorAll(".face.court")[1],
     rollA:el.querySelectorAll(".roll")[0], rollB:el.querySelectorAll(".roll")[1],
     padA:el.querySelectorAll(".paddle")[0], padB:el.querySelectorAll(".paddle")[1],
-    court:el.querySelector(".court"), pong:el.querySelector(".pong"),
+    court:el.querySelector("div.court"), pong:el.querySelector(".pong"),
     flashL:el.querySelector(".endflash.l"), flashR:el.querySelector(".endflash.r"),
     toastL:el.querySelector(".toast.l"), toastR:el.querySelector(".toast.r"),
     btnA:el.querySelectorAll(".plus")[0], btnB:el.querySelectorAll(".plus")[1],
@@ -694,11 +707,13 @@ function setRoll(roll, val, animate){
 }
 
 function ballRest(c, leftLeads){
+  if(window.KD3D) KD3D.setLeader(c.key, leftLeads);
   c.pong.style.left = leftLeads ? "4%" : "96%";
   c.pong.style.top = "50%";
   c.pong.classList.add("rest");
 }
 function ballFire(c, toRight, done){
+  if(window.KD3D && KD3D.ok && KD3D.rally(c.key, toRight, done)) return;
   if(REDUCE || !c.pong.animate){ done(); return; }
   c.pong.classList.remove("rest");
   var x0 = toRight ? "4%" : "96%", x1 = toRight ? "105%" : "-5%";
@@ -726,6 +741,7 @@ function patchCourt(c, r, hold){
   c.nmA.textContent = an; c.nmA.style.color = ac;
   c.nmB.textContent = bn; c.nmB.style.color = bc;
   paintFace(c.faceA, r.a); paintFace(c.faceB, r.b);
+  if(window.KD3D) KD3D.attach(r.key, c.court, ac, bc);
   c.padA.style.background = ac; c.padA.style.boxShadow = "0 0 16px "+ac;
   c.padB.style.background = bc; c.padB.style.boxShadow = "0 0 16px "+bc;
   c.btnA.textContent = "+ " + an; c.btnA.style.color = ac; c.btnA.style.borderColor = ac;
@@ -1407,6 +1423,7 @@ $("me").addEventListener("change", function(){
   render();
 });
 render();
+addEventListener("kd3d-ready", function(){ render(); });
 try{
   if(!window.supabase || !window.SB_URL) throw new Error("supabase yok");
   boot(sbBackend(window.supabase.createClient(window.SB_URL, window.SB_KEY, {
