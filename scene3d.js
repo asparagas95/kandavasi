@@ -29,7 +29,7 @@ const state = {
   ok: false, renderer: null, scene: null, camera: null, composer: null,
   canvas: null, courts: new Map(), active: null, needs: true, anim: null,
   ball: null, paddleA: null, paddleB: null, tableTop: null, rubberA: null, rubberB: null,
-  leaderLeft: true, w: 0, h: 0, ao: null, frames: 0, err: null, golge: null,
+  leaderLeft: true, w: 0, h: 0, ao: null, frames: 0, err: null, golge: null, camBase: null, camLook: null, takip: 0,
 };
 KD3D._s = state;
 KD3D._step = (t) => adim(t || performance.now(), true); // teşhis: kareyi elle çiz (görünürlük kontrolü atlanır)
@@ -173,7 +173,8 @@ function yerlestirModel(root) {
   }
   if (ball) {
     ball.material = ball.material.clone();
-    ball.material.roughness = 0.4;
+    ball.material.roughness = 0.4; ball.material.transparent = true;
+    ball.scale.setScalar(1.5);
     state.ball = ball; scene.add(ball);
   } else { proseduralTop(); }
   temasGolgesi();
@@ -188,10 +189,29 @@ function raketKopya(src, sol) {
       if (o.name.startsWith("Paddle_Rubber_Front")) (sol ? (state.rubberA = o) : (state.rubberB = o));
     }
   });
-  // masanın kendi ucunda, yüzeye yatık; sap dışarı bakıyor
-  p.position.set(sol ? -1.18 : 1.18, H + 0.0048, sol ? 0.38 : -0.38);
-  p.rotation.set(0, sol ? Math.PI / 2 + 0.28 : -Math.PI / 2 - 0.28, 0);
+  raketHazir(p, sol);
   return p;
+}
+// GLB raketi: tabla normali yerel +Y, sap yerel +Z. Dik tutuş: normal fileye, sap aşağı.
+const HAZIR = {
+  A: { pos: new THREE.Vector3(-(L / 2 + 0.24), H + 0.21, 0.20) },
+  B: { pos: new THREE.Vector3( (L / 2 + 0.24), H + 0.21, -0.20) },
+};
+function raketTemelQuat(sol) {
+  const m = new THREE.Matrix4();
+  if (sol) m.makeBasis(new THREE.Vector3(0, 0, -1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, -1, 0));
+  else     m.makeBasis(new THREE.Vector3(0, 0, 1),  new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, -1, 0));
+  const q = new THREE.Quaternion().setFromRotationMatrix(m);
+  // yüzü hafif açık (üst kenar geride) ve bileği biraz kırık
+  q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sol ? 0.24 : -0.24));
+  q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), sol ? -0.35 : 0.35));
+  return q;
+}
+function raketHazir(p, sol) {
+  const h = sol ? HAZIR.A : HAZIR.B;
+  p.position.copy(h.pos);
+  p.quaternion.copy(raketTemelQuat(sol));
+  p.userData.sol = sol;
 }
 
 function fileDokusu() {
@@ -238,8 +258,7 @@ function proseduralMasa() {
     rub.position.y = 0.0042; g.add(rub); (sol ? (state.rubberA = rub) : (state.rubberB = rub));
     const handle = new THREE.Mesh(new RoundedBoxGeometry(0.027, 0.023, 0.105, 3, 0.006), new THREE.MeshStandardMaterial({ color: 0x4a2a14, roughness: 0.62 }));
     handle.position.z = 0.128; handle.castShadow = true; g.add(handle);
-    g.position.set(sol ? -1.18 : 1.18, H + 0.0048, sol ? 0.38 : -0.38);
-    g.rotation.y = sol ? Math.PI/2 + 0.28 : -Math.PI/2 - 0.28;
+    raketHazir(g, sol);
     return g;
   };
   state.paddleA = raket(true); state.paddleB = raket(false); s.add(state.paddleA, state.paddleB);
@@ -254,7 +273,7 @@ function temasGolgesi() {
   grd.addColorStop(0, "rgba(0,0,0,0.55)"); grd.addColorStop(0.5, "rgba(0,0,0,0.22)"); grd.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.09),
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.13),
     new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.renderOrder = 2;
   state.scene.add(m); state.golge = m;
@@ -272,7 +291,8 @@ function golgeGuncelle() {
 }
 function proseduralTop() {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 48, 32),
-    new THREE.MeshStandardMaterial({ color: 0xfbfbf6, roughness: 0.4 }));
+    new THREE.MeshStandardMaterial({ color: 0xfbfbf6, roughness: 0.4, transparent: true }));
+  ball.scale.setScalar(1.5);
   ball.castShadow = true; state.ball = ball; state.scene.add(ball);
 }
 
@@ -352,52 +372,144 @@ function kameraYerlestir(w, h) {
   dist = Math.max(dist, 2.2);
   // hafif 3/4 açı, yüksekten
   const yaw = 0.30, pitch = 0.33;
-  cam.position.set(Math.sin(yaw) * dist, H + Math.sin(pitch) * dist, Math.cos(yaw) * dist);
-  cam.lookAt(0, H - 0.02, 0);
+  state.camBase = new THREE.Vector3(Math.sin(yaw) * dist, H + Math.sin(pitch) * dist, Math.cos(yaw) * dist);
+  state.camLook = new THREE.Vector3(0, H - 0.02, 0);
+  cam.position.copy(state.camBase);
+  cam.lookAt(state.camLook);
   cam.updateProjectionMatrix();
+}
+const _cp = new THREE.Vector3(), _cl = new THREE.Vector3();
+function kameraGuncelle(now) {
+  const cam = state.camera; if (!state.camBase) return;
+  _cp.copy(state.camBase); _cl.copy(state.camLook);
+  if (!AZ_HAREKET) {
+    // ambiyans: çok yavaş nefes
+    _cp.y += Math.sin(now * 0.00031) * 0.012;
+    _cl.x += Math.sin(now * 0.00022) * 0.03;
+    // ralli sırasında topu yumuşakça takip
+    if (state.anim && state.ball) {
+      const bx = THREE.MathUtils.clamp(state.ball.position.x, -1.6, 1.6);
+      state.takip = THREE.MathUtils.lerp(state.takip || 0, bx, 0.08);
+    } else { state.takip = THREE.MathUtils.lerp(state.takip || 0, 0, 0.05); }
+    _cl.x += state.takip * 0.14; _cp.x += state.takip * 0.07; _cp.z -= Math.abs(state.takip) * 0.05;
+  }
+  cam.position.copy(_cp); cam.lookAt(_cl);
 }
 
 /* ================= ralli ================= */
+function ease(u) { return u < 0.5 ? 2*u*u : 1 - Math.pow(-2*u + 2, 2) / 2; }
+function sm(u) { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); }
+
+// bir uçuş parçası: p0 -> p1, y'ye tepe yüksekliği eklenir; xz doğrusal
+function segNokta(seg, u, out) {
+  out.lerpVectors(seg.p0, seg.p1, u);
+  out.y += seg.apex * 4 * u * (1 - u);
+  return out;
+}
+
 function rally(key, winIsA, onLand) {
   if (!state.ok || !state.ball) return false;
   if (state.active !== key) setActive(key);
   if (AZ_HAREKET) { onLand && onLand(); return true; }
   const c = state.courts.get(key);
-  const dir = winIsA ? 1 : -1;                          // A soldan sağa vurur
-  const x0 = -1.12 * dir, xB = 0.72 * dir, x1 = 1.78 * dir;
-  const z0 = 0.16 * dir, z1 = -0.22 * dir;
-  const t0 = performance.now(), sure = 820;
-  let landed = false;
+  const dir = winIsA ? 1 : -1;                 // kazanan soldaysa top sağa gider
+  const xW = -dir * (L / 2), xL = dir * (L / 2);
+  const zW = winIsA ? 0.20 : -0.20, zL = -zW;
+  const cW = new THREE.Vector3(xW - dir * 0.10, H + 0.21, zW);       // kazananın vuruş noktası
+  const cL = new THREE.Vector3(xL + dir * 0.10, H + 0.21, zL);       // kaybedenin vuruş noktası
+  const y0 = H + BALL_R * 1.5;
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+  const PRE = 0.26;                              // servis öncesi geri salınım
+  const segs = []; let t = PRE;
+  const seg = (p0, p1, apex, dur) => { segs.push({ t0: t, t1: t + dur, p0, p1, apex }); t += dur; };
+  // 1) servis: kendi yarısına sektir, fileyi aş, rakip yarıya sektir, rakibin raketine
+  seg(cW, V(xW + dir * 0.55, y0, zW * 0.6), 0.15, 0.30);
+  seg(V(xW + dir * 0.55, y0, zW * 0.6), V(xL - dir * 0.60, y0, zL * 0.5), 0.31, 0.44);
+  seg(V(xL - dir * 0.60, y0, zL * 0.5), cL, 0.13, 0.28);
+  const tVurusL = t;
+  // 2) karşılama: fileyi aş, kazananın yarısına sektir, raketine
+  seg(cL, V(xW + dir * 0.72, y0, zW * 0.35), 0.30, 0.46);
+  seg(V(xW + dir * 0.72, y0, zW * 0.35), cW, 0.14, 0.28);
+  const tVurusW = t;
+  // 3) smaç: derin ve çapraz, rakip yetişemez
+  seg(cW, V(xL - dir * 0.30, y0, -zL * 0.55), 0.20, 0.34);
+  seg(V(xL - dir * 0.30, y0, -zL * 0.55), V(xL + dir * 0.85, H - 0.28, -zL * 1.3), 0.05, 0.36);
+  const tGecis = t - 0.24;                        // top uç çizgisini geçer
+  const tSon = t;
+
+  // raket vuruşları: {raket, tc (temas anı), hedef nokta, ıska mı}
+  const pW = winIsA ? state.paddleA : state.paddleB, pL = winIsA ? state.paddleB : state.paddleA;
+  const vuruslar = [
+    { p: pW, tc: PRE,     hedef: cW.clone(), sol: winIsA,  iska: false },
+    { p: pL, tc: tVurusL, hedef: cL.clone(), sol: !winIsA, iska: false },
+    { p: pW, tc: tVurusW, hedef: cW.clone(), sol: winIsA,  iska: false },
+    { p: pL, tc: tGecis + 0.10, hedef: V(xL + dir * 0.05, H + 0.30, zL * 0.2), sol: !winIsA, iska: true },
+  ];
+
+  const ball = state.ball, tmp = new THREE.Vector3();
+  const t0 = performance.now();
+  let landed = false, sonSeg = -1;
+  ball.material.opacity = 1;
+
   state.anim = (now) => {
-    const t = Math.min(1, (now - t0) / sure);
-    const ball = state.ball;
-    let x, y;
-    if (t < 0.56) {                                     // vuruş -> file üstü -> sekme
-      const u = t / 0.56;
-      x = THREE.MathUtils.lerp(x0, xB, u);
-      const peak = 0.30;
-      y = H + BALL_R + 0.12 * (1 - u) + peak * 4 * u * (1 - u) * 1.15 - 0.12 * (1 - u) * (1 - u) * 0;
-      if (u > 0.98) y = H + BALL_R;
-    } else {                                            // sekme -> masayı terk
-      const u = (t - 0.56) / 0.44;
-      x = THREE.MathUtils.lerp(xB, x1, u);
-      y = H + BALL_R + 0.17 * 4 * u * (1 - u) - 0.22 * u * u;
+    const tt = (now - t0) / 1000;
+
+    // --- top ---
+    let seg = null;
+    for (const sg of segs) if (tt >= sg.t0 && tt < sg.t1) { seg = sg; break; }
+    if (tt < PRE) { ball.position.copy(cW); }
+    else if (seg) {
+      const u = (tt - seg.t0) / (seg.t1 - seg.t0);
+      segNokta(seg, u, ball.position);
+      const hiz = seg.p0.distanceTo(seg.p1) / (seg.t1 - seg.t0);
+      ball.rotation.z -= 0.09 * hiz * dir; ball.rotation.x += 0.03 * hiz;
+      const idx = segs.indexOf(seg);
+      if (idx !== sonSeg) { sonSeg = idx; }
+    } else if (tt >= tSon) {
+      // masayı terk etti: söndür, dinlenme yerine ışınla, yak
+      const k = Math.min(1, (tt - tSon) / 0.45);
+      if (k < 0.5) ball.material.opacity = 1 - k * 2;
+      else { if (ball.material.opacity < 0.01) { state.leaderLeft = c ? c.leaderLeft : state.leaderLeft; topDinlen(); } ball.material.opacity = (k - 0.5) * 2; }
+      if (k >= 1) { ball.material.opacity = 1; state.anim = null; vuruslar.forEach(v => raketHazir(v.p, v.sol)); }
     }
-    const z = THREE.MathUtils.lerp(z0, z1, t);
-    ball.position.set(x, y, z);
-    ball.rotation.x += 0.35 * dir; ball.rotation.z += 0.12;
     golgeGuncelle();
-    // raket vuruşları
-    const pw = winIsA ? state.paddleA : state.paddleB, pl = winIsA ? state.paddleB : state.paddleA;
-    if (pw) pw.rotation.z = -0.9 * Math.sin(Math.min(1, t / 0.18) * Math.PI) * dir;
-    if (pl) pl.rotation.z = 0.7 * Math.sin(Math.max(0, Math.min(1, (t - 0.74) / 0.26)) * Math.PI) * dir;   // geç kalan savunma
-    if (!landed && t >= 0.7) { landed = true; onLand && onLand(); }
-    if (t >= 1) {
-      state.anim = null;
-      if (pw) pw.rotation.z = 0; if (pl) pl.rotation.z = 0;
-      state.leaderLeft = c ? c.leaderLeft : state.leaderLeft;
-      topDinlen();
+
+    // --- raketler ---
+    for (const v of vuruslar) {
+      if (!v.p) continue;
+      const lt = tt - v.tc;                         // temas anına göre zaman
+      const hazir = (v.sol ? HAZIR.A : HAZIR.B).pos;
+      const q0 = raketTemelQuat(v.sol);
+      const d = v.sol ? 1 : -1;                     // vuruş yönü (+x sola, -x sağa)
+      if (lt < -0.30 || lt > 0.75) { continue; }
+      let pos, yaw = 0, roll = 0;
+      if (lt < 0) {                                 // geri salınım -> temas
+        const u = sm((lt + 0.30) / 0.30);
+        const geri = hazir.clone().add(new THREE.Vector3(-d * 0.16, -0.05, (v.sol ? 1 : -1) * 0.10));
+        pos = geri.lerp(v.hedef, u);
+        yaw = THREE.MathUtils.lerp(d * 0.55, -d * 0.15, u);
+        roll = THREE.MathUtils.lerp(d * 0.10, -d * 0.12, u);
+      } else if (lt < 0.22) {                       // ileri devam
+        const u = sm(lt / 0.22);
+        const ileri = v.hedef.clone().add(new THREE.Vector3(d * 0.22, 0.12, (v.sol ? -1 : 1) * 0.12));
+        pos = v.hedef.clone().lerp(ileri, u);
+        yaw = THREE.MathUtils.lerp(-d * 0.15, -d * 0.75, u);
+        roll = THREE.MathUtils.lerp(-d * 0.12, -d * 0.35, u);
+      } else {                                      // hazıra dönüş
+        const u = sm((lt - 0.22) / 0.53);
+        const ileri = v.hedef.clone().add(new THREE.Vector3(d * 0.22, 0.12, (v.sol ? -1 : 1) * 0.12));
+        pos = ileri.lerp(hazir, u);
+        yaw = THREE.MathUtils.lerp(-d * 0.75, 0, u);
+        roll = THREE.MathUtils.lerp(-d * 0.35, 0, u);
+      }
+      v.p.position.copy(pos);
+      v.p.quaternion.copy(q0)
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw))
+        .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll));
     }
+
+    if (!landed && tt >= tGecis) { landed = true; onLand && onLand(); }
     state.needs = true;
   };
   state.needs = true;
@@ -427,8 +539,9 @@ function adim(now, zorla) {
     state.needs = true;
   }
   if (state.anim) state.anim(now);
-  if (!state.needs) return;
-  state.needs = !!state.anim;
+  kameraGuncelle(now);
+  if (!zorla && !state.anim && !state.needs && AZ_HAREKET) return;
+  state.needs = false;
   state.composer.render();
 }
 
