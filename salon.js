@@ -252,19 +252,34 @@ function tabelaCiz(T) {
   g.font = "600 40px 'DM Mono', monospace"; g.textBaseline = "top";
   g.fillStyle = d.ac; g.textAlign = "left"; g.fillText(d.an.toLocaleUpperCase("tr"), 54, 40);
   g.fillStyle = d.bc; g.textAlign = "right"; g.fillText(d.bn.toLocaleUpperCase("tr"), Wc - 54, 40);
-  // skorlar
-  g.font = "800 190px 'Big Shoulders Display', 'Arial Narrow', sans-serif";
-  g.fillStyle = "#f4f7f8"; g.shadowColor = "rgba(255,255,255,.35)"; g.shadowBlur = 18;
-  g.textAlign = "left"; g.fillText(String(d.aw), 54, 100);
-  g.textAlign = "right"; g.fillText(String(d.bw), Wc - 54, 100);
-  g.shadowBlur = 0;
-  // orta
-  g.fillStyle = "rgba(255,255,255,.25)"; g.font = "500 26px 'DM Mono', monospace"; g.textAlign = "center";
-  g.fillText("100'E İLK GİDEN", Wc / 2, 52);
-  g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(Wc/2 - 2, 100, 4, 210);
-  // son 5
-  const pips = d.last5 || [];
-  for (let i = 0; i < 5; i++) { const p = pips[i]; g.beginPath(); g.arc(Wc/2 - 60 + i*30, 340, 9, 0, Math.PI*2); g.fillStyle = p ? p : "rgba(255,255,255,.12)"; g.fill(); }
+  const m = T.mac;
+  if (m) {
+    // MAÇ MODU: büyük rakamlar maç içi sayı, üstte küçük 100'lük sayaç
+    g.fillStyle = "rgba(255,255,255,.35)"; g.font = "500 26px 'DM Mono', monospace"; g.textAlign = "center";
+    g.fillText(d.aw + "  ·  100'E İLK GİDEN  ·  " + d.bw, Wc / 2, 52);
+    g.font = "800 190px 'Big Shoulders Display', 'Arial Narrow', sans-serif";
+    const bit = !!m.bitti;
+    g.fillStyle = bit ? "#ffd83d" : "#f4f7f8"; g.shadowColor = bit ? "rgba(255,216,61,.7)" : "rgba(255,255,255,.35)"; g.shadowBlur = bit ? 34 : 18;
+    g.textAlign = "left"; g.fillText(String(m.a), 54, 100);
+    g.textAlign = "right"; g.fillText(String(m.b), Wc - 54, 100);
+    g.shadowBlur = 0;
+    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(Wc/2 - 2, 100, 4, 210);
+    // etiket
+    g.font = "800 " + (bit ? 96 : 40) + "px 'Big Shoulders Display', sans-serif"; g.textAlign = "center";
+    g.fillStyle = bit ? "#ffd83d" : "#ff6a1f"; g.shadowColor = g.fillStyle; g.shadowBlur = bit ? 30 : 10;
+    g.fillText(m.etiket, Wc / 2, bit ? 250 : 320); g.shadowBlur = 0;
+  } else {
+    g.font = "800 190px 'Big Shoulders Display', 'Arial Narrow', sans-serif";
+    g.fillStyle = "#f4f7f8"; g.shadowColor = "rgba(255,255,255,.35)"; g.shadowBlur = 18;
+    g.textAlign = "left"; g.fillText(String(d.aw), 54, 100);
+    g.textAlign = "right"; g.fillText(String(d.bw), Wc - 54, 100);
+    g.shadowBlur = 0;
+    g.fillStyle = "rgba(255,255,255,.25)"; g.font = "500 26px 'DM Mono', monospace"; g.textAlign = "center";
+    g.fillText("100'E İLK GİDEN · MAÇLAR", Wc / 2, 52);
+    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(Wc/2 - 2, 100, 4, 210);
+    const pips = d.last5 || [];
+    for (let i = 0; i < 5; i++) { const p = pips[i]; g.beginPath(); g.arc(Wc/2 - 60 + i*30, 340, 9, 0, Math.PI*2); g.fillStyle = p ? p : "rgba(255,255,255,.12)"; g.fill(); }
+  }
   T.boardTex.needsUpdate = true;
 }
 function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x+r, y); g.arcTo(x+w, y, x+w, y+h, r); g.arcTo(x+w, y+h, x, y+h, r); g.arcTo(x, y+h, x, y, r); g.arcTo(x, y, x+w, y, r); g.closePath(); }
@@ -301,7 +316,7 @@ function setData(list) {
     if (T.rubB) T.rubB.material.color.copy(kaucukRengi(d.bc));
     if (T.rubA2) T.rubA2.material.color.copy(kaucukRengi(d.ac).multiplyScalar(0.55));
     if (T.rubB2) T.rubB2.material.color.copy(kaucukRengi(d.bc).multiplyScalar(0.55));
-    tabelaCiz(T);
+    if (!T.mac) tabelaCiz(T);
     if (!T.anim && degisti) topDinlen(T);
   });
   if (st.view && !st.tables.has(st.view)) goto(null);
@@ -369,63 +384,132 @@ function kameraGuncelle(now) {
   cam.position.copy(_cp); cam.lookAt(_cl);
 }
 
-/* ================= ralli ================= */
+/* ================= ralli / maç ================= */
 function segNokta(seg, u, out) { out.lerpVectors(seg.p0, seg.p1, u); out.y += seg.apex * 4 * u * (1 - u); return out; }
-function rally(key, winIsA, onPass, sessiz) {
-  const T = st.tables.get(key); if (!st.ok || !T || !T.ball) return false;
-  if (AZ_HAREKET) { onPass && onPass(); return true; }
+
+// Tek ralli adımı: {dur, run(tt), end()}; kisa=true -> servis + smaç (2 vuruş), değilse 3 vuruşluk tam ralli
+function ralliKur(T, winIsA, kisa, onPass, sessiz) {
   const dir = winIsA ? 1 : -1;
   const xW = -dir * (L / 2), xL = dir * (L / 2), zW = winIsA ? 0.20 : -0.20, zL = -zW;
   const cW = new THREE.Vector3(xW - dir * 0.10, H + 0.21, zW), cL = new THREE.Vector3(xL + dir * 0.10, H + 0.21, zL);
   const y0 = H + BALL_R * 1.5, V = (x, y, z) => new THREE.Vector3(x, y, z);
-  const PRE = 0.26, segs = [], sesler = []; let t = PRE;
+  const PRE = 0.24, segs = [], sesler = []; let t = PRE;
   const seg = (p0, p1, apex, dur, ses) => { if (ses) sesler.push({ t, tur: ses }); segs.push({ t0: t, t1: t + dur, p0, p1, apex }); t += dur; };
-  seg(cW, V(xW + dir * 0.55, y0, zW * 0.6), 0.15, 0.30, "raket");
-  seg(V(xW + dir * 0.55, y0, zW * 0.6), V(xL - dir * 0.60, y0, zL * 0.5), 0.31, 0.44, "masa");
-  seg(V(xL - dir * 0.60, y0, zL * 0.5), cL, 0.13, 0.28, "masa");
+  seg(cW, V(xW + dir * 0.55, y0, zW * 0.6), 0.15, 0.28, "raket");
+  seg(V(xW + dir * 0.55, y0, zW * 0.6), V(xL - dir * 0.60, y0, zL * 0.5), 0.31, 0.42, "masa");
+  seg(V(xL - dir * 0.60, y0, zL * 0.5), cL, 0.13, 0.26, "masa");
   const tVurusL = t;
-  seg(cL, V(xW + dir * 0.72, y0, zW * 0.35), 0.30, 0.46, "raket");
-  seg(V(xW + dir * 0.72, y0, zW * 0.35), cW, 0.14, 0.28, "masa");
-  const tVurusW = t;
-  seg(cW, V(xL - dir * 0.30, y0, -zL * 0.55), 0.20, 0.34, "raket");
-  seg(V(xL - dir * 0.30, y0, -zL * 0.55), V(xL + dir * 0.85, H - 0.28, -zL * 1.3), 0.05, 0.36, "masa");
+  const vuruslar = [{ p: winIsA ? T.pA : T.pB, tc: PRE, hedef: cW.clone(), sol: winIsA }];
+  let tVurusW = null;
+  if (!kisa) {
+    seg(cL, V(xW + dir * 0.72, y0, zW * 0.35), 0.30, 0.44, "raket");
+    seg(V(xW + dir * 0.72, y0, zW * 0.35), cW, 0.14, 0.26, "masa");
+    tVurusW = t;
+    vuruslar.push({ p: winIsA ? T.pB : T.pA, tc: tVurusL, hedef: cL.clone(), sol: !winIsA });
+    seg(cW, V(xL - dir * 0.30, y0, -zL * 0.55), 0.20, 0.32, "raket");
+    seg(V(xL - dir * 0.30, y0, -zL * 0.55), V(xL + dir * 0.85, H - 0.28, -zL * 1.3), 0.05, 0.34, "masa");
+    vuruslar.push({ p: winIsA ? T.pA : T.pB, tc: tVurusW, hedef: cW.clone(), sol: winIsA });
+  } else {
+    // kısa: rakip karşılamaya kalkar, top yanından geçer
+    segs.pop(); t = tVurusL - 0.26; sesler.pop();
+    seg(V(xL - dir * 0.60, y0, zL * 0.5), V(xL + dir * 0.85, H - 0.25, zL * 1.1), 0.09, 0.40, "masa");
+  }
   const tGecis = t - 0.24, tSon = t;
-  const pW = winIsA ? T.pA : T.pB, pL = winIsA ? T.pB : T.pA;
-  const vuruslar = [
-    { p: pW, tc: PRE,          hedef: cW.clone(), sol: winIsA },
-    { p: pL, tc: tVurusL,      hedef: cL.clone(), sol: !winIsA },
-    { p: pW, tc: tVurusW,      hedef: cW.clone(), sol: winIsA },
-    { p: pL, tc: tGecis + 0.10, hedef: V(xL + dir * 0.05, H + 0.30, zL * 0.2), sol: !winIsA },
-  ];
-  const ball = T.ball, t0 = performance.now(); let passed = false, sesIdx = 0;
+  vuruslar.push({ p: winIsA ? T.pB : T.pA, tc: tGecis + 0.10, hedef: V(xL + dir * 0.05, H + 0.30, zL * 0.2), sol: !winIsA });
+  const ball = T.ball; let passed = false, sesIdx = 0, bitti = false;
   ball.material.opacity = 1;
-  T.anim = (now) => {
-    const tt = (now - t0) / 1000;
-    while (sesIdx < sesler.length && tt >= sesler[sesIdx].t) { if (!sessiz || Math.random() < 0.5) sesCal(sesler[sesIdx].tur, sessiz ? 0.35 : 1); sesIdx++; }
-    let sg = null; for (const s of segs) if (tt >= s.t0 && tt < s.t1) { sg = s; break; }
-    if (tt < PRE) ball.position.copy(cW);
-    else if (sg) { const u = (tt - sg.t0) / (sg.t1 - sg.t0); segNokta(sg, u, ball.position); const hiz = sg.p0.distanceTo(sg.p1) / (sg.t1 - sg.t0); ball.rotation.z -= 0.09 * hiz * dir; ball.rotation.x += 0.03 * hiz; }
-    else if (tt >= tSon) {
-      const k = Math.min(1, (tt - tSon) / 0.45);
-      if (k < 0.5) ball.material.opacity = 1 - k * 2;
-      else { if (ball.material.opacity < 0.01) topDinlen(T); ball.material.opacity = (k - 0.5) * 2; }
-      if (k >= 1) { ball.material.opacity = 1; T.anim = null; vuruslar.forEach((v) => raketHazir(v.p, v.sol)); }
-    }
-    golgeGuncelle(T);
-    for (const v of vuruslar) {
-      if (!v.p) continue;
-      const lt = tt - v.tc, hazir = v.sol ? HAZIR.A : HAZIR.B, q0 = raketTemelQuat(v.sol), d = v.sol ? 1 : -1;
-      if (lt < -0.30 || lt > 0.75) continue;
-      let pos, yaw, roll;
-      const ileri = v.hedef.clone().add(new THREE.Vector3(d * 0.22, 0.12, (v.sol ? -1 : 1) * 0.12));
-      if (lt < 0) { const u = sm((lt + 0.30) / 0.30); pos = hazir.clone().add(new THREE.Vector3(-d * 0.16, -0.05, (v.sol ? 1 : -1) * 0.10)).lerp(v.hedef, u); yaw = THREE.MathUtils.lerp(d * 0.55, -d * 0.15, u); roll = THREE.MathUtils.lerp(d * 0.10, -d * 0.12, u); }
-      else if (lt < 0.22) { const u = sm(lt / 0.22); pos = v.hedef.clone().lerp(ileri, u); yaw = THREE.MathUtils.lerp(-d * 0.15, -d * 0.75, u); roll = THREE.MathUtils.lerp(-d * 0.12, -d * 0.35, u); }
-      else { const u = sm((lt - 0.22) / 0.53); pos = ileri.lerp(hazir, u); yaw = THREE.MathUtils.lerp(-d * 0.75, 0, u); roll = THREE.MathUtils.lerp(-d * 0.35, 0, u); }
-      v.p.position.copy(pos);
-      v.p.quaternion.copy(q0).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll));
-    }
-    if (!passed && tt >= tGecis) { passed = true; onPass && onPass(); }
+  return {
+    dur: tSon + 0.45,
+    run(tt) {
+      while (sesIdx < sesler.length && tt >= sesler[sesIdx].t) { sesCal(sesler[sesIdx].tur, sessiz ? 0.35 : 1); sesIdx++; }
+      let sg = null; for (const x of segs) if (tt >= x.t0 && tt < x.t1) { sg = x; break; }
+      if (tt < PRE) ball.position.copy(cW);
+      else if (sg) { const u = (tt - sg.t0) / (sg.t1 - sg.t0); segNokta(sg, u, ball.position); const hiz = sg.p0.distanceTo(sg.p1) / (sg.t1 - sg.t0); ball.rotation.z -= 0.09 * hiz * dir; ball.rotation.x += 0.03 * hiz; }
+      else if (tt >= tSon) {
+        const k = Math.min(1, (tt - tSon) / 0.45);
+        if (k < 0.5) ball.material.opacity = 1 - k * 2; else { if (!bitti) { bitti = true; topDinlen(T); } ball.material.opacity = (k - 0.5) * 2; }
+      }
+      golgeGuncelle(T);
+      for (const v of vuruslar) {
+        if (!v.p) continue;
+        const lt = tt - v.tc, hazir = v.sol ? HAZIR.A : HAZIR.B, q0 = raketTemelQuat(v.sol), d = v.sol ? 1 : -1;
+        if (lt < -0.30 || lt > 0.75) continue;
+        let pos, yaw, roll;
+        const ileri = v.hedef.clone().add(new THREE.Vector3(d * 0.22, 0.12, (v.sol ? -1 : 1) * 0.12));
+        if (lt < 0) { const u = sm((lt + 0.30) / 0.30); pos = hazir.clone().add(new THREE.Vector3(-d * 0.16, -0.05, (v.sol ? 1 : -1) * 0.10)).lerp(v.hedef, u); yaw = THREE.MathUtils.lerp(d * 0.55, -d * 0.15, u); roll = THREE.MathUtils.lerp(d * 0.10, -d * 0.12, u); }
+        else if (lt < 0.22) { const u = sm(lt / 0.22); pos = v.hedef.clone().lerp(ileri, u); yaw = THREE.MathUtils.lerp(-d * 0.15, -d * 0.75, u); roll = THREE.MathUtils.lerp(-d * 0.12, -d * 0.35, u); }
+        else { const u = sm((lt - 0.22) / 0.53); pos = ileri.lerp(hazir, u); yaw = THREE.MathUtils.lerp(-d * 0.75, 0, u); roll = THREE.MathUtils.lerp(-d * 0.35, 0, u); }
+        v.p.position.copy(pos);
+        v.p.quaternion.copy(q0).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll));
+      }
+      if (!passed && tt >= tGecis) { passed = true; onPass && onPass(); }
+    },
+    end() { ball.material.opacity = 1; vuruslar.forEach((v) => raketHazir(v.p, v.sol)); topDinlen(T); },
   };
+}
+
+// Adım listesini sırayla oynatan makine
+function makine(T, adimlar, onEnd) {
+  let i = 0, t0 = null;
+  T.anim = (now) => {
+    if (t0 === null) t0 = now;
+    let a = adimlar[i]; if (!a) { T.anim = null; onEnd && onEnd(); return; }
+    let tt = (now - t0) / 1000;
+    while (a && tt >= a.dur) { a.end && a.end(); t0 += a.dur * 1000; i++; a = adimlar[i]; tt = (now - t0) / 1000; }
+    if (!a) { T.anim = null; onEnd && onEnd(); return; }
+    a.run(tt);
+  };
+}
+
+// Bir MAÇ (21'lik set): montaj -> kısa ralli (rakip alır) -> kısa ralli (maç sayısı) -> tam ralli (maç) -> kutlama
+function macOynat(T, winIsA, onDone, hizli) {
+  const r = Math.random();
+  const lFinal = r < 0.08 ? 20 : Math.max(5, Math.min(19, Math.round(9 + Math.random() * 10 + (Math.random() - 0.5) * 6)));
+  const wFinal = lFinal === 20 ? 22 : 21;
+  const W = () => winIsA ? "a" : "b", Lo = () => winIsA ? "b" : "a";
+  const sk = { a: 0, b: 0, etiket: "MAÇ" };
+  const set = (w, l) => { sk[W()] = w; sk[Lo()] = l; };
+  const wBas = Math.max(0, wFinal - 3 - Math.floor(Math.random() * 6)), lBas = Math.max(0, lFinal - 1 - Math.floor(Math.random() * 5));
+  set(wBas, lBas); T.mac = sk; tabelaCiz(T);
+  const adimlar = [];
+  // 1) montaj: sayılar hızla akar
+  const mDur = hizli ? 0.7 : 1.1; let sonTik = -1;
+  adimlar.push({ dur: mDur, run(tt) {
+    const u = sm(tt / mDur);
+    const w = Math.round(THREE.MathUtils.lerp(wBas, wFinal - 2, u)), l = Math.round(THREE.MathUtils.lerp(lBas, lFinal - 1, u));
+    const tik = w + l; if (tik !== sonTik) { sonTik = tik; sesCal("masa", 0.5); set(w, l); sk.etiket = "MAÇ SÜRÜYOR"; tabelaCiz(T); }
+  }, end() { set(wFinal - 2, lFinal - 1); tabelaCiz(T); } });
+  if (!hizli) {
+    // 2) rakip bir sayı alır
+    const r1 = ralliKur(T, !winIsA, true, () => { set(wFinal - 2, lFinal); sk.etiket = "MAÇ SÜRÜYOR"; tabelaCiz(T); });
+    adimlar.push(r1);
+    // 3) kazanan maç sayısına gelir
+    const r2 = ralliKur(T, winIsA, true, () => { set(wFinal - 1, lFinal); sk.etiket = "MAÇ SAYISI"; tabelaCiz(T); });
+    adimlar.push(r2);
+  } else { set(wFinal - 1, lFinal); sk.etiket = "MAÇ SAYISI"; tabelaCiz(T); }
+  // 4) maç sayısı: tam ralli
+  const r3 = ralliKur(T, winIsA, false, () => {
+    set(wFinal, lFinal); sk.etiket = "MAÇ"; sk.bitti = true; tabelaCiz(T); dudukCal();
+    onDone && onDone({ w: wFinal, l: lFinal });
+  });
+  adimlar.push(r3);
+  // 5) kutlama: kazanan raketi kaldırır, kaybeden düşürür
+  const pW = winIsA ? T.pA : T.pB, pL = winIsA ? T.pB : T.pA;
+  adimlar.push({ dur: 1.1, run(tt) {
+    const u = Math.min(1, tt / 1.1), yukari = Math.sin(Math.min(1, u * 1.6) * Math.PI) * 0.28;
+    raketHazir(pW, winIsA); pW.position.y += yukari + Math.sin(tt * 26) * 0.02 * (1 - u);
+    raketHazir(pL, !winIsA); pL.position.y -= 0.16 * sm(u * 2); pL.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), (winIsA ? -1 : 1) * 0.9 * sm(u * 2));
+  }, end() { raketHazir(pW, winIsA); raketHazir(pL, !winIsA); T.mac = null; tabelaCiz(T); } });
+  makine(T, adimlar, () => { const q = T.kuyruk && T.kuyruk.shift(); if (q) macOynat(T, q.winIsA, q.onDone, true); });
+}
+
+// Dış API: her çağrı bir maç. Tablo meşgulse kuyruğa girer (kuyruktakiler hızlı modda oynar).
+function rally(key, winIsA, onDone, sessiz) {
+  const T = st.tables.get(key); if (!st.ok || !T || !T.ball) return false;
+  if (AZ_HAREKET) { onDone && onDone({ w: 21, l: 15 }); return true; }
+  if (sessiz) { if (T.anim) return false; makine(T, [ralliKur(T, winIsA, Math.random() < 0.5, null, true)]); return true; }
+  if (T.anim) { (T.kuyruk = T.kuyruk || []).push({ winIsA, onDone }); return true; }
+  macOynat(T, winIsA, onDone, false);
   return true;
 }
 
@@ -457,6 +541,15 @@ function sesCal(tur, kazanc) {
   if (tur === "raket") { o.frequency.setValueAtTime(760, t); o.frequency.exponentialRampToValueAtTime(240, t + 0.06); g.gain.setValueAtTime(0.22 * kazanc, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.09); }
   else { o.frequency.setValueAtTime(1900, t); o.frequency.exponentialRampToValueAtTime(900, t + 0.03); g.gain.setValueAtTime(0.12 * kazanc, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); }
   o.type = "sine"; o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.1);
+}
+function dudukCal() {
+  if (!st.sesAcik || !st.ses) return;
+  const a = st.ses, t = a.currentTime;
+  [[880, 0], [1320, 0.13]].forEach(([f, d]) => {
+    const o = a.createOscillator(), g = a.createGain(); o.type = "triangle"; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.16, t + d + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.16);
+    o.connect(g); g.connect(a.destination); o.start(t + d); o.stop(t + d + 0.18);
+  });
 }
 function sound(on) { st.sesAcik = !!on; if (on) sesHazirla(); }
 
@@ -495,8 +588,8 @@ function adim(now, zorla) {
     st.camera.aspect = w / h; st.camera.updateProjectionMatrix();
     kameraSabitle(st.view || "wide");
   }
-  const tabelaHedef = st.view ? 0 : 1;
   st.tables.forEach((T) => {
+    const tabelaHedef = (!st.view || (st.view === T.key && T.mac)) ? 1 : 0;
     T.board.material.opacity += (tabelaHedef - T.board.material.opacity) * 0.08;
     T.board.visible = T.board.material.opacity > 0.02;
     if (T.anim) T.anim(now);

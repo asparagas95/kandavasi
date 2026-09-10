@@ -1210,8 +1210,9 @@ function draw(){
   fresh.forEach(function(m){
     var key = key2(m.w, m.l), r = c.pairs[key]; if(!r) return;
     var winIsA = m.w === r.a, wn = pname(m.w), ln = pname(m.l);
-    var patlat = function(){
-      mansetGoster(mansetFor(m, wn, ln), pcol(m.w), wn.toLocaleUpperCase("tr") + " +1");
+    var patlat = function(mac){
+      var alt = "MAÇ " + wn.toLocaleUpperCase("tr") + (mac && mac.w ? " · " + mac.w + "–" + mac.l : "");
+      mansetGoster(mansetFor(m, wn, ln), pcol(m.w), alt);
       if(window.SALON && SALON.ok) SALON.bubble(key, !winIsA, toastFor(m, wn, ln));
     };
     if(!(window.SALON && SALON.ok && SALON.rally(key, winIsA, patlat))) patlat();
